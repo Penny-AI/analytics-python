@@ -2,20 +2,61 @@ from datetime import date, datetime
 import unittest
 import time
 import mock
+from moto import mock_iam, mock_events
+import boto3
+import json
 
-from analytics.version import VERSION
-from analytics.client import Client
+from eventbridge.analytics.version import VERSION
+from eventbridge.analytics.client import Client
 
 
-class TestClient(unittest.TestCase):
+@mock_iam
+def create_user_with_all_permissions():
+    client = boto3.client("iam", region_name="eu-west-1")
+    client.create_user(UserName="test_user1")
 
-    def fail(self):
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{"Effect": "Allow", "Action": ["events:*"],
+                       "Resource": "*"}],
+    }
+
+    client.put_user_policy(
+        UserName="test_user1",
+        PolicyName="policy1",
+        PolicyDocument=json.dumps(policy_document),
+    )
+
+    return client.create_access_key(UserName="test_user1")["AccessKey"]
+
+
+@mock_events
+@mock_iam
+class test_client(unittest.TestCase):
+
+    _boto_client = None
+    _bus_name = "test_bus_name"
+
+    def mark_fail(self):
         """Mark the failure handler"""
         self.failed = True
 
     def setUp(self):
+        # Create User
+        user = create_user_with_all_permissions()
+        self.boto_client = boto3.client(
+            "events",
+            aws_access_key_id=user["AccessKeyId"],
+            aws_secret_access_key=user["SecretAccessKey"],
+            region_name="eu-west-1"
+        )
+        self.boto_client.create_event_bus(Name=self._bus_name)
+
         self.failed = False
-        self.client = Client('testsecret', on_error=self.fail)
+        self.client = Client(source_id='test_source_id',
+                             event_bus_name=self._bus_name,
+                             boto_client=self.boto_client,
+                             on_error=self.mark_fail)
 
     def test_requires_write_key(self):
         self.assertRaises(AssertionError, Client)
@@ -72,7 +113,7 @@ class TestClient(unittest.TestCase):
 
         self.assertTrue(success)
 
-        self.assertEqual(msg['timestamp'], '2014-09-03T00:00:00+00:00')
+        self.assertEqual(msg['timestamp'], '2014-09-03T00:00:00.000+00:00')
         self.assertEqual(msg['properties'], {'property': 'value'})
         self.assertEqual(msg['integrations'], {'Amplitude': True})
         self.assertEqual(msg['context']['ip'], '192.168.0.1')
@@ -108,7 +149,7 @@ class TestClient(unittest.TestCase):
 
         self.assertTrue(success)
 
-        self.assertEqual(msg['timestamp'], '2014-09-03T00:00:00+00:00')
+        self.assertEqual(msg['timestamp'], '2014-09-03T00:00:00.000+00:00')
         self.assertEqual(msg['integrations'], {'Amplitude': True})
         self.assertEqual(msg['context']['ip'], '192.168.0.1')
         self.assertEqual(msg['traits'], {'trait': 'value'})
@@ -142,7 +183,7 @@ class TestClient(unittest.TestCase):
 
         self.assertTrue(success)
 
-        self.assertEqual(msg['timestamp'], '2014-09-03T00:00:00+00:00')
+        self.assertEqual(msg['timestamp'], '2014-09-03T00:00:00.000+00:00')
         self.assertEqual(msg['integrations'], {'Amplitude': True})
         self.assertEqual(msg['context']['ip'], '192.168.0.1')
         self.assertEqual(msg['traits'], {'trait': 'value'})
@@ -184,7 +225,7 @@ class TestClient(unittest.TestCase):
 
         self.assertTrue(success)
 
-        self.assertEqual(msg['timestamp'], '2014-09-03T00:00:00+00:00')
+        self.assertEqual(msg['timestamp'], '2014-09-03T00:00:00.000+00:00')
         self.assertEqual(msg['integrations'], {'Amplitude': True})
         self.assertEqual(msg['context']['ip'], '192.168.0.1')
         self.assertEqual(msg['properties'], {'property': 'value'})
@@ -218,7 +259,7 @@ class TestClient(unittest.TestCase):
 
         self.assertTrue(success)
 
-        self.assertEqual(msg['timestamp'], '2014-09-03T00:00:00+00:00')
+        self.assertEqual(msg['timestamp'], '2014-09-03T00:00:00.000+00:00')
         self.assertEqual(msg['integrations'], {'Amplitude': True})
         self.assertEqual(msg['context']['ip'], '192.168.0.1')
         self.assertEqual(msg['properties'], {'property': 'value'})
@@ -259,7 +300,8 @@ class TestClient(unittest.TestCase):
             self.assertFalse(consumer.is_alive())
 
     def test_synchronous(self):
-        client = Client('testsecret', sync_mode=True)
+        client = Client('test_app_id', self._bus_name,
+                        boto_client=self.boto_client, sync_mode=True)
 
         success, _ = client.identify('userId')
         self.assertFalse(client.consumers)
@@ -267,7 +309,8 @@ class TestClient(unittest.TestCase):
         self.assertTrue(success)
 
     def test_overflow(self):
-        client = Client('testsecret', max_queue_size=1)
+        client = Client('test_app_id', 'test_event_bus_name',
+                        max_queue_size=1)
         # Ensure consumer thread is no longer uploading
         client.join()
 
@@ -277,12 +320,6 @@ class TestClient(unittest.TestCase):
         success, _ = client.identify('userId')
         # Make sure we are informed that the queue is at capacity
         self.assertFalse(success)
-
-    def test_success_on_invalid_write_key(self):
-        client = Client('bad_key', on_error=self.fail)
-        client.track('userId', 'event')
-        client.flush()
-        self.assertFalse(self.failed)
 
     def test_numeric_user_id(self):
         self.client.track(1234, 'python event')
@@ -303,40 +340,21 @@ class TestClient(unittest.TestCase):
 
         self.assertEqual(msg['traits'], {'birthdate': date(1981, 2, 2)})
 
-    def test_gzip(self):
-        client = Client('testsecret', on_error=self.fail, gzip=True)
-        for _ in range(10):
-            client.identify('userId', {'trait': 'value'})
-        client.flush()
-        self.assertFalse(self.failed)
-
     def test_user_defined_upload_size(self):
-        client = Client('testsecret', on_error=self.fail,
-                        upload_size=10, upload_interval=3)
+        client = Client('test_app_id', self._bus_name,
+                        on_error=self.fail,
+                        upload_size=10, upload_interval=3,
+                        boto_client=self.boto_client)
 
         def mock_post_fn(**kwargs):
             self.assertEqual(len(kwargs['batch']), 10)
 
         # the post function should be called 2 times, with a batch size of 10
         # each time.
-        with mock.patch('analytics.consumer.post', side_effect=mock_post_fn) \
+        with mock.patch('eventbridge.analytics.consumer.post',
+                        side_effect=mock_post_fn) \
                 as mock_post:
             for _ in range(20):
                 client.identify('userId', {'trait': 'value'})
             time.sleep(1)
             self.assertEqual(mock_post.call_count, 2)
-
-    def test_user_defined_timeout(self):
-        client = Client('testsecret', timeout=10)
-        for consumer in client.consumers:
-            self.assertEqual(consumer.timeout, 10)
-
-    def test_default_timeout_15(self):
-        client = Client('testsecret')
-        for consumer in client.consumers:
-            self.assertEqual(consumer.timeout, 15)
-
-    def test_proxies(self):
-        client = Client('testsecret', proxies='203.243.63.16:80')
-        success, msg = client.identify('userId', {'trait': 'value'})
-        self.assertTrue(success)

@@ -1,29 +1,29 @@
 import os
 import sys
+from eventbridge.analytics.version import VERSION
 
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
 # Don't import analytics-python module here, since deps may not be installed
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'segment','analytics'))
-from version import VERSION
+sys.path.insert(0, os.path.join(os.path.dirname(__file__),
+                                'eventbridge', 'analytics'))
 
 long_description = '''
-Segment is the simplest way to integrate analytics into your application.
-One API allows you to turn on any other analytics service. No more learning
-new APIs, repeated code, and wasted development time.
+This is the unofficial python client that wraps the
+AWS EventBridge PutEvents endpoint.
 
-This is the official python client that wraps the Segment REST API (https://segment.com).
-
-Documentation and more details at https://github.com/segmentio/analytics-python
+Documentation and more details at
+https://github.com/Penny-AI/eventbridge-analytics-python
 '''
 
 install_requires = [
     "requests~=2.7",
     "monotonic~=1.5",
     "backoff~=2.1",
-    "python-dateutil~=2.2"
+    "python-dateutil~=2.2",
+    "boto3~=1.17.0"
 ]
 
 tests_require = [
@@ -33,22 +33,22 @@ tests_require = [
 ]
 
 setup(
-    name='segment-analytics-python',
+    name='eventbridge-analytics-python',
     version=VERSION,
-    url='https://github.com/segmentio/analytics-python',
-    author='Segment',
-    author_email='friends@segment.com',
-    maintainer='Segment',
-    maintainer_email='friends@segment.com',
+    url='https://github.com/Penny-AI/eventbridge-analytics-python',
+    author='PennyAI',
+    author_email='james.marcogliese@pennyapp.com',
+    maintainer='PennyAI',
+    maintainer_email='james.marcogliese@pennyapp.com',
     test_suite='analytics.test.all',
-    packages=['segment.analytics', 'analytics.test'],
+    packages=['eventbridge.analytics', 'analytics.test'],
     python_requires='>=3.6.0',
     license='MIT License',
     install_requires=install_requires,
     extras_require={
         'test': tests_require
     },
-    description='The hassle-free way to integrate analytics into any python application.',
+    description='A way to integrate analytics into AWS EventBridge.',
     long_description=long_description,
     classifiers=[
         "Development Status :: 5 - Production/Stable",
