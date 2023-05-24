@@ -1,82 +1,38 @@
-﻿analytics-python
+﻿eventbridge-analytics-python
 ==============
 
-[![CircleCI](https://circleci.com/gh/segmentio/analytics-python/tree/master.svg?style=svg&circle-token=c0b411a3e21943918294714ad1d75a1cfc718f79)](https://circleci.com/gh/segmentio/analytics-python/tree/master)
-
-
-analytics-python is a python client for [Segment](https://segment.com)
-
-<div align="center">
-  <img src="https://user-images.githubusercontent.com/16131737/53616895-a1142d80-3b99-11e9-8e0e-594c0b0dcdc9.png"/>
-  <p><b><i>You can't fix what you can't measure</i></b></p>
-</div>
-
-Analytics helps you measure your users, product, and business. It unlocks insights into your app's funnel, core business metrics, and whether you have a product-market fit.
-
-## 🚀 How to get started
-1. **Collect analytics data** from your app(s).
-    - The top 200 Segment companies collect data from 5+ source types (web, mobile, server, CRM, etc.).
-2. **Send the data to analytics tools** (for example, Google Analytics, Amplitude, Mixpanel).
-    - Over 250+ Segment companies send data to eight categories of destinations such as analytics tools, warehouses, email marketing, and remarketing systems, session recording, and more.
-3. **Explore your data** by creating metrics (for example, new signups, retention cohorts, and revenue generation).
-    - The best Segment companies use retention cohorts to measure product-market fit. Netflix has 70% paid retention after 12 months, 30% after 7 years.
-
-[Segment](https://segment.com) collects analytics data and allows you to send it to more than 250 apps (such as Google Analytics, Mixpanel, Optimizely, Facebook Ads, Slack, Sentry) just by flipping a switch. You only need one Segment code snippet, and you can turn integrations on and off at will, with no additional code. [Sign up with Segment today](https://app.segment.com/signup).
-
-### 🤔 Why?
-1. **Power all your analytics apps with the same data**. Instead of writing code to integrate all of your tools individually, send data to Segment, once.
-
-2. **Install tracking for the last time**. We're the last integration you'll ever need to write. You only need to instrument Segment once. Reduce all of your tracking code and advertising tags into a single set of API calls.
-
-3. **Send data from anywhere**. Send Segment data from any device, and we'll transform and send it on to any tool.
-
-4. **Query your data in SQL**. Slice, dice, and analyze your data in detail with Segment SQL. We'll transform and load your customer behavioral data directly from your apps into Amazon Redshift, Google BigQuery, or Postgres. Save weeks of engineering time by not having to invent your data warehouse and ETL pipeline.
-
-    For example, you can capture data on any app:
-    ```python
-    analytics.track('Order Completed', { price: 99.84 })
-    ```
-    Then, query the resulting data in SQL:
-    ```sql
-    select * from app.order_completed
-    order by price desc
-    ```
+eventbridge-analytics-python is a python client for [AWS EventBridge](https://aws.amazon.com/eventbridge) using the [Segment](https://segment.com) spec.
 
 ## 👨‍💻 Getting Started
 
-Install `segment-analytics-python` using pip:
+Install `eventbridge-analytics-python` using pip:
 
 ```bash
-pip3 install segment-analytics-python
+pip3 install eventbridge-analytics-python
 ```
 
 or you can clone this repo:
 ```bash
-git clone https://github.com/segmentio/analytics-python.git
+git clone https://github.com/Penny-AI/eventbridge-analytics-python.git
 
-cd analytics-python
+cd eventbridge-analytics-python
 
 sudo python3 setup.py install
 ```
 
-Now inside your app, you'll want to **set your** `write_key` before making any analytics calls:
+Now inside your app, you'll want to **set your** `source_id` and `event_bus_name` before making any analytics calls:
 
 ```python
-import segment.analytics as analytics
+import eventbridge.analytics as analytics
 
-analytics.write_key = 'YOUR_WRITE_KEY'
+analytics.source_id = 'YOU_SOURCE_IDENTIFIER'
+analytics.event_bus_name = 'YOUR_EVENT_BUS_NAME'
 ```
-**Note** If you need to send data to multiple Segment sources, you can initialize a new Client for each `write_key`
-
-### 🚀 Startup Program
-<div align="center">
-  <a href="https://segment.com/startups"><img src="https://user-images.githubusercontent.com/16131737/53128952-08d3d400-351b-11e9-9730-7da35adda781.png" /></a>
-</div>
-If you are part of a new startup  (&lt;$5M raised, &lt;2 years since founding), we just launched a new startup program for you. You can get a Segment Team plan  (up to <b>$25,000 value</b> in Segment credits) for free up to 2 years — <a href="https://segment.com/startups/">apply here</a>!
+**Note** If you need to send data to multiple EventBridge buses, you can initialize a new Client for each `source_id` and `event_bus_name`
 
 ## Documentation
 
-Documentation is available at [https://segment.com/libraries/python](https://segment.com/libraries/python).
+Documentation on the Segment spec is available at [https://segment.com/libraries/python](https://segment.com/libraries/python).
 
 ## License
 
@@ -95,12 +51,10 @@ WWWWWW||WWWWWW
 
 (The MIT License)
 
-Copyright (c) 2013 Segment Inc. <friends@segment.com>
-
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the 'Software'), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-[![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com)
+[![forthebadge](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMzMuNTciIGhlaWdodD0iMzUiIHZpZXdCb3g9IjAgMCAyMzMuNTcgMzUiPjxyZWN0IGNsYXNzPSJzdmdfX3JlY3QiIHg9IjAiIHk9IjAiIHdpZHRoPSI5Ny43MTAwMDAwMDAwMDAwMSIgaGVpZ2h0PSIzNSIgZmlsbD0iIzMxQzRGMyIvPjxyZWN0IGNsYXNzPSJzdmdfX3JlY3QiIHg9Ijk1LjcxMDAwMDAwMDAwMDAxIiB5PSIwIiB3aWR0aD0iMTM3Ljg1OTk5OTk5OTk5OTk5IiBoZWlnaHQ9IjM1IiBmaWxsPSIjMzg5QUQ1Ii8+PHBhdGggY2xhc3M9InN2Z19fdGV4dCIgZD0iTTE3LjMzIDIyTDE0LjIyIDIyTDE0LjIyIDEzLjQ3TDE3LjE0IDEzLjQ3UTE4LjU5IDEzLjQ3IDE5LjM0IDE0LjA1UTIwLjEwIDE0LjYzIDIwLjEwIDE1Ljc4TDIwLjEwIDE1Ljc4UTIwLjEwIDE2LjM2IDE5Ljc4IDE2LjgzUTE5LjQ3IDE3LjMwIDE4Ljg2IDE3LjU2TDE4Ljg2IDE3LjU2UTE5LjU1IDE3Ljc1IDE5LjkzIDE4LjI2UTIwLjMxIDE4Ljc4IDIwLjMxIDE5LjUxTDIwLjMxIDE5LjUxUTIwLjMxIDIwLjcxIDE5LjUzIDIxLjM2UTE4Ljc2IDIyIDE3LjMzIDIyTDE3LjMzIDIyWk0xNS43MCAxOC4xNUwxNS43MCAyMC44MkwxNy4zNSAyMC44MlExOC4wNCAyMC44MiAxOC40NCAyMC40N1ExOC44MyAyMC4xMyAxOC44MyAxOS41MUwxOC44MyAxOS41MVExOC44MyAxOC4xOCAxNy40NyAxOC4xNUwxNy40NyAxOC4xNUwxNS43MCAxOC4xNVpNMTUuNzAgMTQuNjZMMTUuNzAgMTcuMDZMMTcuMTUgMTcuMDZRMTcuODQgMTcuMDYgMTguMjMgMTYuNzVRMTguNjIgMTYuNDMgMTguNjIgMTUuODZMMTguNjIgMTUuODZRMTguNjIgMTUuMjMgMTguMjYgMTQuOTVRMTcuOTAgMTQuNjYgMTcuMTQgMTQuNjZMMTcuMTQgMTQuNjZMMTUuNzAgMTQuNjZaTTI0LjY0IDE5LjE2TDI0LjY0IDE5LjE2TDI0LjY0IDEzLjQ3TDI2LjEyIDEzLjQ3TDI2LjEyIDE5LjE4UTI2LjEyIDIwLjAzIDI2LjU1IDIwLjQ4UTI2Ljk4IDIwLjkzIDI3LjgzIDIwLjkzTDI3LjgzIDIwLjkzUTI5LjU0IDIwLjkzIDI5LjU0IDE5LjEzTDI5LjU0IDE5LjEzTDI5LjU0IDEzLjQ3TDMxLjAyIDEzLjQ3TDMxLjAyIDE5LjE3UTMxLjAyIDIwLjUzIDMwLjE1IDIxLjMyUTI5LjI4IDIyLjEyIDI3LjgzIDIyLjEyTDI3LjgzIDIyLjEyUTI2LjM2IDIyLjEyIDI1LjUwIDIxLjMzUTI0LjY0IDIwLjU1IDI0LjY0IDE5LjE2Wk0zNy4xNSAyMkwzNS42NyAyMkwzNS42NyAxMy40N0wzNy4xNSAxMy40N0wzNy4xNSAyMlpNNDcuMzIgMjJMNDEuOTYgMjJMNDEuOTYgMTMuNDdMNDMuNDQgMTMuNDdMNDMuNDQgMjAuODJMNDcuMzIgMjAuODJMNDcuMzIgMjJaTTUzLjEyIDE0LjY2TDUwLjQ5IDE0LjY2TDUwLjQ5IDEzLjQ3TDU3LjI1IDEzLjQ3TDU3LjI1IDE0LjY2TDU0LjU5IDE0LjY2TDU0LjU5IDIyTDUzLjEyIDIyTDUzLjEyIDE0LjY2Wk03MC4xMCAyMkw2Ni45OSAyMkw2Ni45OSAxMy40N0w2OS45MSAxMy40N1E3MS4zNiAxMy40NyA3Mi4xMSAxNC4wNVE3Mi44NyAxNC42MyA3Mi44NyAxNS43OEw3Mi44NyAxNS43OFE3Mi44NyAxNi4zNiA3Mi41NSAxNi44M1E3Mi4yNCAxNy4zMCA3MS42MyAxNy41Nkw3MS42MyAxNy41NlE3Mi4zMiAxNy43NSA3Mi43MCAxOC4yNlE3My4wNyAxOC43OCA3My4wNyAxOS41MUw3My4wNyAxOS41MVE3My4wNyAyMC43MSA3Mi4zMCAyMS4zNlE3MS41MyAyMiA3MC4xMCAyMkw3MC4xMCAyMlpNNjguNDcgMTguMTVMNjguNDcgMjAuODJMNzAuMTIgMjAuODJRNzAuODEgMjAuODIgNzEuMjEgMjAuNDdRNzEuNjAgMjAuMTMgNzEuNjAgMTkuNTFMNzEuNjAgMTkuNTFRNzEuNjAgMTguMTggNzAuMjQgMTguMTVMNzAuMjQgMTguMTVMNjguNDcgMTguMTVaTTY4LjQ3IDE0LjY2TDY4LjQ3IDE3LjA2TDY5LjkyIDE3LjA2UTcwLjYxIDE3LjA2IDcxLjAwIDE2Ljc1UTcxLjM5IDE2LjQzIDcxLjM5IDE1Ljg2TDcxLjM5IDE1Ljg2UTcxLjM5IDE1LjIzIDcxLjAzIDE0Ljk1UTcwLjY3IDE0LjY2IDY5LjkxIDE0LjY2TDY5LjkxIDE0LjY2TDY4LjQ3IDE0LjY2Wk03OS41OCAxOC44Nkw3Ni43MiAxMy40N0w3OC4zNyAxMy40N0w4MC4zMyAxNy41MUw4Mi4yOSAxMy40N0w4My45MyAxMy40N0w4MS4wNyAxOC44Nkw4MS4wNyAyMkw3OS41OCAyMkw3OS41OCAxOC44NloiIGZpbGw9IiNGRkZGRkYiLz48cGF0aCBjbGFzcz0ic3ZnX190ZXh0IiBkPSJNMTA5LjMxIDIxLjI0TDEwOS4zMSAyMS4yNEwxMTAuMDkgMTkuNDlRMTEwLjY1IDE5Ljg2IDExMS40MCAyMC4wOVExMTIuMTQgMjAuMzIgMTEyLjg2IDIwLjMyTDExMi44NiAyMC4zMlExMTQuMjMgMjAuMzIgMTE0LjIzIDE5LjY0TDExNC4yMyAxOS42NFExMTQuMjMgMTkuMjggMTEzLjg0IDE5LjExUTExMy40NSAxOC45MyAxMTIuNTkgMTguNzRMMTEyLjU5IDE4Ljc0UTExMS42NCAxOC41MyAxMTEuMDAgMTguMzBRMTEwLjM3IDE4LjA2IDEwOS45MSAxNy41NVExMDkuNDYgMTcuMDMgMTA5LjQ2IDE2LjE2TDEwOS40NiAxNi4xNlExMDkuNDYgMTUuMzkgMTA5Ljg4IDE0Ljc3UTExMC4zMCAxNC4xNSAxMTEuMTMgMTMuNzlRMTExLjk3IDEzLjQzIDExMy4xNyAxMy40M0wxMTMuMTcgMTMuNDNRMTE0LjAwIDEzLjQzIDExNC44MSAxMy42MlExMTUuNjEgMTMuODAgMTE2LjIzIDE0LjE3TDExNi4yMyAxNC4xN0wxMTUuNDkgMTUuOTNRMTE0LjI5IDE1LjI4IDExMy4xNiAxNS4yOEwxMTMuMTYgMTUuMjhRMTEyLjQ1IDE1LjI4IDExMi4xMyAxNS40OVExMTEuODEgMTUuNzAgMTExLjgxIDE2LjA0TDExMS44MSAxNi4wNFExMTEuODEgMTYuMzcgMTEyLjE5IDE2LjU0UTExMi41OCAxNi43MSAxMTMuNDMgMTYuODlMMTEzLjQzIDE2Ljg5UTExNC4zOSAxNy4xMCAxMTUuMDIgMTcuMzNRMTE1LjY1IDE3LjU2IDExNi4xMSAxOC4wN1ExMTYuNTcgMTguNTggMTE2LjU3IDE5LjQ2TDExNi41NyAxOS40NlExMTYuNTcgMjAuMjEgMTE2LjE1IDIwLjgzUTExNS43MyAyMS40NCAxMTQuODkgMjEuODBRMTE0LjA1IDIyLjE3IDExMi44NSAyMi4xN0wxMTIuODUgMjIuMTdRMTExLjgzIDIyLjE3IDExMC44NyAyMS45MlExMDkuOTEgMjEuNjcgMTA5LjMxIDIxLjI0Wk0xMjIuNTcgMjJMMTIwLjE0IDIyTDEyMy44NSAxMy42MEwxMjYuMTkgMTMuNjBMMTI5LjkxIDIyTDEyNy40NCAyMkwxMjYuNzggMjAuMzdMMTIzLjIzIDIwLjM3TDEyMi41NyAyMlpNMTI1LjAwIDE1LjkzTDEyMy45MiAxOC42MUwxMjYuMDggMTguNjFMMTI1LjAwIDE1LjkzWk0xNDAuNDUgMjJMMTM0LjA2IDIyTDEzNC4wNiAxMy42MEwxMzYuNDQgMTMuNjBMMTM2LjQ0IDIwLjExTDE0MC40NSAyMC4xMUwxNDAuNDUgMjJaTTE0Ni42NiAxNS40OEwxNDQuMDggMTUuNDhMMTQ0LjA4IDEzLjYwTDE1MS42MCAxMy42MEwxNTEuNjAgMTUuNDhMMTQ5LjAzIDE1LjQ4TDE0OS4wMyAyMkwxNDYuNjYgMjJMMTQ2LjY2IDE1LjQ4Wk0xNTguMTAgMTguOTVMMTU0Ljg5IDEzLjYwTDE1Ny40MCAxMy42MEwxNTkuMzkgMTYuOTRMMTYxLjM4IDEzLjYwTDE2My42OSAxMy42MEwxNjAuNDcgMTguOTlMMTYwLjQ3IDIyTDE1OC4xMCAyMkwxNTguMTAgMTguOTVaTTE3OC43MiAyMkwxNzQuNzQgMjJMMTc0Ljc0IDEzLjYwTDE3OC43MiAxMy42MFExODAuMTAgMTMuNjAgMTgxLjE3IDE0LjEyUTE4Mi4yMyAxNC42MyAxODIuODIgMTUuNThRMTgzLjQxIDE2LjUzIDE4My40MSAxNy44MEwxODMuNDEgMTcuODBRMTgzLjQxIDE5LjA3IDE4Mi44MiAyMC4wMlExODIuMjMgMjAuOTcgMTgxLjE3IDIxLjQ4UTE4MC4xMCAyMiAxNzguNzIgMjJMMTc4LjcyIDIyWk0xNzcuMTIgMTUuNTBMMTc3LjEyIDIwLjEwTDE3OC42MiAyMC4xMFExNzkuNzAgMjAuMTAgMTgwLjM1IDE5LjQ5UTE4MS4wMSAxOC44OCAxODEuMDEgMTcuODBMMTgxLjAxIDE3LjgwUTE4MS4wMSAxNi43MiAxODAuMzUgMTYuMTFRMTc5LjcwIDE1LjUwIDE3OC42MiAxNS41MEwxNzguNjIgMTUuNTBMMTc3LjEyIDE1LjUwWk0xODcuNzEgMTcuODBMMTg3LjcxIDE3LjgwUTE4Ny43MSAxNi41NSAxODguMzEgMTUuNTVRMTg4LjkyIDE0LjU2IDE4OS45OCAxNC4wMFExOTEuMDQgMTMuNDMgMTkyLjM3IDEzLjQzTDE5Mi4zNyAxMy40M1ExOTMuNzAgMTMuNDMgMTk0Ljc3IDE0LjAwUTE5NS44MyAxNC41NiAxOTYuNDQgMTUuNTVRMTk3LjA0IDE2LjU1IDE5Ny4wNCAxNy44MEwxOTcuMDQgMTcuODBRMTk3LjA0IDE5LjA1IDE5Ni40NCAyMC4wNFExOTUuODMgMjEuMDQgMTk0Ljc3IDIxLjYwUTE5My43MSAyMi4xNyAxOTIuMzcgMjIuMTdMMTkyLjM3IDIyLjE3UTE5MS4wNCAyMi4xNyAxODkuOTggMjEuNjBRMTg4LjkyIDIxLjA0IDE4OC4zMSAyMC4wNFExODcuNzEgMTkuMDUgMTg3LjcxIDE3LjgwWk0xOTAuMTEgMTcuODBMMTkwLjExIDE3LjgwUTE5MC4xMSAxOC41MSAxOTAuNDEgMTkuMDVRMTkwLjcxIDE5LjYwIDE5MS4yMyAxOS45MFExOTEuNzQgMjAuMjAgMTkyLjM3IDIwLjIwTDE5Mi4zNyAyMC4yMFExOTMuMDEgMjAuMjAgMTkzLjUzIDE5LjkwUTE5NC4wNCAxOS42MCAxOTQuMzQgMTkuMDVRMTk0LjY0IDE4LjUxIDE5NC42NCAxNy44MEwxOTQuNjQgMTcuODBRMTk0LjY0IDE3LjA5IDE5NC4zNCAxNi41NFExOTQuMDQgMTYgMTkzLjUzIDE1LjcwUTE5My4wMSAxNS40MCAxOTIuMzcgMTUuNDBMMTkyLjM3IDE1LjQwUTE5MS43NCAxNS40MCAxOTEuMjIgMTUuNzBRMTkwLjcxIDE2IDE5MC40MSAxNi41NFExOTAuMTEgMTcuMDkgMTkwLjExIDE3LjgwWk0yMDEuMzUgMTcuODBMMjAxLjM1IDE3LjgwUTIwMS4zNSAxNi41NCAyMDEuOTQgMTUuNTRRMjAyLjU0IDE0LjU1IDIwMy42MSAxMy45OVEyMDQuNjggMTMuNDMgMjA2LjAyIDEzLjQzTDIwNi4wMiAxMy40M1EyMDcuMjAgMTMuNDMgMjA4LjE0IDEzLjgzUTIwOS4wNyAxNC4yMiAyMDkuNjkgMTQuOTdMMjA5LjY5IDE0Ljk3TDIwOC4xOCAxNi4zM1EyMDcuMzQgMTUuNDAgMjA2LjE2IDE1LjQwTDIwNi4xNiAxNS40MFEyMDYuMTUgMTUuNDAgMjA2LjE0IDE1LjQwTDIwNi4xNCAxNS40MFEyMDUuMDcgMTUuNDAgMjA0LjQwIDE2LjA2UTIwMy43NCAxNi43MSAyMDMuNzQgMTcuODBMMjAzLjc0IDE3LjgwUTIwMy43NCAxOC41MCAyMDQuMDQgMTkuMDRRMjA0LjM1IDE5LjU5IDIwNC44OCAxOS44OVEyMDUuNDIgMjAuMjAgMjA2LjEyIDIwLjIwTDIwNi4xMiAyMC4yMFEyMDYuODEgMjAuMjAgMjA3LjQwIDE5LjkzTDIwNy40MCAxOS45M0wyMDcuNDAgMTcuNjJMMjA5LjUwIDE3LjYyTDIwOS41MCAyMS4xMFEyMDguNzggMjEuNjEgMjA3Ljg1IDIxLjg5UTIwNi45MSAyMi4xNyAyMDUuOTcgMjIuMTdMMjA1Ljk3IDIyLjE3UTIwNC42NiAyMi4xNyAyMDMuNjAgMjEuNjFRMjAyLjU0IDIxLjA1IDIwMS45NCAyMC4wNVEyMDEuMzUgMTkuMDYgMjAxLjM1IDE3LjgwWk0yMTMuOTEgMjEuMjRMMjEzLjkxIDIxLjI0TDIxNC42OSAxOS40OVEyMTUuMjUgMTkuODYgMjE1Ljk5IDIwLjA5UTIxNi43NCAyMC4zMiAyMTcuNDYgMjAuMzJMMjE3LjQ2IDIwLjMyUTIxOC44MiAyMC4zMiAyMTguODMgMTkuNjRMMjE4LjgzIDE5LjY0UTIxOC44MyAxOS4yOCAyMTguNDQgMTkuMTFRMjE4LjA1IDE4LjkzIDIxNy4xOCAxOC43NEwyMTcuMTggMTguNzRRMjE2LjIzIDE4LjUzIDIxNS42MCAxOC4zMFEyMTQuOTYgMTguMDYgMjE0LjUxIDE3LjU1UTIxNC4wNSAxNy4wMyAyMTQuMDUgMTYuMTZMMjE0LjA1IDE2LjE2UTIxNC4wNSAxNS4zOSAyMTQuNDcgMTQuNzdRMjE0Ljg5IDE0LjE1IDIxNS43MyAxMy43OVEyMTYuNTYgMTMuNDMgMjE3Ljc3IDEzLjQzTDIxNy43NyAxMy40M1EyMTguNjAgMTMuNDMgMjE5LjQwIDEzLjYyUTIyMC4yMSAxMy44MCAyMjAuODIgMTQuMTdMMjIwLjgyIDE0LjE3TDIyMC4wOSAxNS45M1EyMTguODkgMTUuMjggMjE3Ljc2IDE1LjI4TDIxNy43NiAxNS4yOFEyMTcuMDUgMTUuMjggMjE2LjczIDE1LjQ5UTIxNi40MCAxNS43MCAyMTYuNDAgMTYuMDRMMjE2LjQwIDE2LjA0UTIxNi40MCAxNi4zNyAyMTYuNzkgMTYuNTRRMjE3LjE3IDE2LjcxIDIxOC4wMiAxNi44OUwyMTguMDIgMTYuODlRMjE4Ljk4IDE3LjEwIDIxOS42MSAxNy4zM1EyMjAuMjQgMTcuNTYgMjIwLjcwIDE4LjA3UTIyMS4xNyAxOC41OCAyMjEuMTcgMTkuNDZMMjIxLjE3IDE5LjQ2UTIyMS4xNyAyMC4yMSAyMjAuNzUgMjAuODNRMjIwLjMzIDIxLjQ0IDIxOS40OSAyMS44MFEyMTguNjUgMjIuMTcgMjE3LjQ1IDIyLjE3TDIxNy40NSAyMi4xN1EyMTYuNDMgMjIuMTcgMjE1LjQ3IDIxLjkyUTIxNC41MSAyMS42NyAyMTMuOTEgMjEuMjRaIiBmaWxsPSIjRkZGRkZGIiB4PSIxMDguNzEwMDAwMDAwMDAwMDEiLz48L3N2Zz4=)](https://forthebadge.com)

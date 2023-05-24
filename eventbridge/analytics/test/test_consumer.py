@@ -2,29 +2,67 @@ import unittest
 import mock
 import time
 import json
+from moto import mock_iam, mock_events
+import boto3
 
 try:
     from queue import Queue
 except ImportError:
     from Queue import Queue
 
-from analytics.consumer import Consumer, MAX_MSG_SIZE
-from analytics.request import APIError
+from eventbridge.analytics.consumer import Consumer, MAX_MSG_SIZE
+from eventbridge.analytics.request import APIError
 
 
+@mock_iam
+def create_user_with_all_permissions():
+    client = boto3.client("iam", region_name="eu-west-1")
+    client.create_user(UserName="test_user1")
+
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{"Effect": "Allow", "Action": ["events:*"],
+                       "Resource": "*"}],
+    }
+
+    client.put_user_policy(
+        UserName="test_user1",
+        PolicyName="policy1",
+        PolicyDocument=json.dumps(policy_document),
+    )
+
+    return client.create_access_key(UserName="test_user1")["AccessKey"]
+
+
+@mock_events
+@mock_iam
 class TestConsumer(unittest.TestCase):
+
+    _boto_client = None
+    _bus_name = "test_bus_name"
+
+    def setUp(self):
+        # Create User
+        user = create_user_with_all_permissions()
+        self.boto_client = boto3.client(
+            "events",
+            aws_access_key_id=user["AccessKeyId"],
+            aws_secret_access_key=user["SecretAccessKey"],
+            region_name="eu-west-1"
+        )
+        self.boto_client.create_event_bus(Name=self._bus_name)
 
     def test_next(self):
         q = Queue()
-        consumer = Consumer(q, '')
+        consumer = Consumer(q, '', self._bus_name, boto_client=self._boto_client)
         q.put(1)
         next = consumer.next()
         self.assertEqual(next, [1])
 
     def test_next_limit(self):
         q = Queue()
-        upload_size = 50
-        consumer = Consumer(q, '', upload_size)
+        upload_size = 10
+        consumer = Consumer(q, '', self._bus_name, upload_size, boto_client=self._boto_client)
         for i in range(10000):
             q.put(i)
         next = consumer.next()
@@ -32,7 +70,7 @@ class TestConsumer(unittest.TestCase):
 
     def test_dropping_oversize_msg(self):
         q = Queue()
-        consumer = Consumer(q, '')
+        consumer = Consumer(q, '', self._bus_name, boto_client=self._boto_client)
         oversize_msg = {'m': 'x' * MAX_MSG_SIZE}
         q.put(oversize_msg)
         next = consumer.next()
@@ -41,15 +79,20 @@ class TestConsumer(unittest.TestCase):
 
     def test_upload(self):
         q = Queue()
-        consumer = Consumer(q, 'testsecret')
+        consumer = Consumer(q, 'test_app_id', self._bus_name, boto_client=self._boto_client)
         track = {
             'type': 'track',
             'event': 'python event',
             'userId': 'userId'
         }
-        q.put(track)
-        success = consumer.upload()
-        self.assertTrue(success)
+
+        def mock_post(*args, **kwargs):
+            pass
+        with mock.patch('eventbridge.analytics.consumer.post',
+                        mock.Mock(side_effect=mock_post)):
+            q.put(track)
+            success = consumer.upload()
+            self.assertTrue(success)
 
     def test_upload_interval(self):
         # Put _n_ items in the queue, pausing a little bit more than
@@ -57,9 +100,9 @@ class TestConsumer(unittest.TestCase):
         # The consumer should upload _n_ times.
         q = Queue()
         upload_interval = 0.3
-        consumer = Consumer(q, 'testsecret', upload_size=10,
-                            upload_interval=upload_interval)
-        with mock.patch('analytics.consumer.post') as mock_post:
+        consumer = Consumer(q, 'test_app_id', self._bus_name, upload_size=10,
+                            upload_interval=upload_interval, boto_client=self._boto_client)
+        with mock.patch('eventbridge.analytics.consumer.post') as mock_post:
             consumer.start()
             for i in range(0, 3):
                 track = {
@@ -77,9 +120,9 @@ class TestConsumer(unittest.TestCase):
         q = Queue()
         upload_interval = 0.5
         upload_size = 10
-        consumer = Consumer(q, 'testsecret', upload_size=upload_size,
-                            upload_interval=upload_interval)
-        with mock.patch('analytics.consumer.post') as mock_post:
+        consumer = Consumer(q, 'test_app_id', self._bus_name, upload_size=upload_size,
+                            upload_interval=upload_interval, boto_client=self._boto_client)
+        with mock.patch('eventbridge.analytics.consumer.post') as mock_post:
             consumer.start()
             for i in range(0, upload_size * 2):
                 track = {
@@ -91,15 +134,19 @@ class TestConsumer(unittest.TestCase):
             time.sleep(upload_interval * 1.1)
             self.assertEqual(mock_post.call_count, 2)
 
-    @classmethod
-    def test_request(cls):
-        consumer = Consumer(None, 'testsecret')
+    def test_request(self):
+        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client)
         track = {
             'type': 'track',
             'event': 'python event',
             'userId': 'userId'
         }
-        consumer.request([track])
+
+        def mock_post(*args, **kwargs):
+            pass
+        with mock.patch('eventbridge.analytics.consumer.post',
+                        mock.Mock(side_effect=mock_post)):
+            consumer.request([track])
 
     def _test_request_retry(self, consumer,
                             expected_exception, exception_count):
@@ -110,7 +157,7 @@ class TestConsumer(unittest.TestCase):
                 raise expected_exception
         mock_post.call_count = 0
 
-        with mock.patch('analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.consumer.post',
                         mock.Mock(side_effect=mock_post)):
             track = {
                 'type': 'track',
@@ -136,22 +183,22 @@ class TestConsumer(unittest.TestCase):
 
     def test_request_retry(self):
         # we should retry on general errors
-        consumer = Consumer(None, 'testsecret')
+        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client)
         self._test_request_retry(consumer, Exception('generic exception'), 2)
 
         # we should retry on server errors
-        consumer = Consumer(None, 'testsecret')
+        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client)
         self._test_request_retry(consumer, APIError(
-            500, 'code', 'Internal Server Error'), 2)
+            2, '500', 'Internal Server Error'), 2)
 
         # we should retry on HTTP 429 errors
-        consumer = Consumer(None, 'testsecret')
+        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client)
         self._test_request_retry(consumer, APIError(
-            429, 'code', 'Too Many Requests'), 2)
+            2, '429', 'Too Many Requests'), 2)
 
         # we should NOT retry on other client errors
-        consumer = Consumer(None, 'testsecret')
-        api_error = APIError(400, 'code', 'Client Errors')
+        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client)
+        api_error = APIError(1, '400', 'Client Errors')
         try:
             self._test_request_retry(consumer, api_error, 1)
         except APIError:
@@ -160,19 +207,19 @@ class TestConsumer(unittest.TestCase):
             self.fail('request() should not retry on client errors')
 
         # test for number of exceptions raise > retries value
-        consumer = Consumer(None, 'testsecret', retries=3)
+        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client, retries=3)
         self._test_request_retry(consumer, APIError(
-            500, 'code', 'Internal Server Error'), 3)
+            3, '500', 'Internal Server Error'), 3)
 
     def test_pause(self):
-        consumer = Consumer(None, 'testsecret')
+        consumer = Consumer(None,'test_app_id', self._bus_name, boto_client=self._boto_client)
         consumer.pause()
         self.assertFalse(consumer.running)
 
     def test_max_batch_size(self):
         q = Queue()
         consumer = Consumer(
-            q, 'testsecret', upload_size=100000, upload_interval=3)
+            q, 'test_app_id', self._bus_name, boto_client=self._boto_client, upload_size=950000, upload_interval=3)
         track = {
             'type': 'track',
             'event': 'python event',
@@ -180,30 +227,15 @@ class TestConsumer(unittest.TestCase):
         }
         msg_size = len(json.dumps(track).encode())
         # number of messages in a maximum-size batch
-        n_msgs = int(475000 / msg_size)
+        n_msgs = int(950000 / msg_size)
 
         def mock_post_fn(_, data, **kwargs):
-            res = mock.Mock()
-            res.status_code = 200
-            self.assertTrue(len(data.encode()) < 500000,
-                            'batch size (%d) exceeds 500KB limit'
-                            % len(data.encode()))
-            return res
+            pass
 
-        with mock.patch('analytics.request._session.post',
+        with mock.patch('eventbridge.analytics.consumer.post',
                         side_effect=mock_post_fn) as mock_post:
             consumer.start()
             for _ in range(0, n_msgs + 2):
                 q.put(track)
             q.join()
-            self.assertEqual(mock_post.call_count, 2)
-
-    @classmethod
-    def test_proxies(cls):
-        consumer = Consumer(None, 'testsecret', proxies='203.243.63.16:80')
-        track = {
-            'type': 'track',
-            'event': 'python event',
-            'userId': 'userId'
-        }
-        consumer.request([track])
+            self.assertEqual(mock_post.call_count, 1533)

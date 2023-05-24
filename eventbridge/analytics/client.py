@@ -7,10 +7,10 @@ import json
 
 from dateutil.tz import tzutc
 
-from segment.analytics.utils import guess_timezone, clean
-from segment.analytics.consumer import Consumer, MAX_MSG_SIZE
-from segment.analytics.request import post, DatetimeSerializer
-from segment.analytics.version import VERSION
+from eventbridge.analytics.utils import guess_timezone, clean
+from eventbridge.analytics.consumer import Consumer, MAX_MSG_SIZE
+from eventbridge.analytics.request import post, DatetimeSerializer
+from eventbridge.analytics.version import VERSION
 
 import queue
 
@@ -19,51 +19,46 @@ ID_TYPES = (numbers.Number, str)
 
 class Client(object):
     class DefaultConfig(object):
-        write_key = None
-        host = None
+        source_id = None
+        event_bus_name = None
         on_error = None
         debug = False
         send = True
         sync_mode = False
         max_queue_size = 10000
-        gzip = False
-        timeout = 15
         max_retries = 10
-        proxies = None
         thread = 1
         upload_interval = 0.5
         upload_size = 100
+        boto_client = None
 
     """Create a new Segment client."""
     log = logging.getLogger('segment')
 
     def __init__(self,
-                 write_key=DefaultConfig.write_key,
-                 host=DefaultConfig.host,
+                 source_id=DefaultConfig.source_id,
+                 event_bus_name=DefaultConfig.event_bus_name,
                  debug=DefaultConfig.debug,
                  max_queue_size=DefaultConfig.max_queue_size,
                  send=DefaultConfig.send,
                  on_error=DefaultConfig.on_error,
-                 gzip=DefaultConfig.gzip,
                  max_retries=DefaultConfig.max_retries,
                  sync_mode=DefaultConfig.sync_mode,
-                 timeout=DefaultConfig.timeout,
-                 proxies=DefaultConfig.proxies,
                  thread=DefaultConfig.thread,
                  upload_size=DefaultConfig.upload_size,
-                 upload_interval=DefaultConfig.upload_interval,):
-        require('write_key', write_key, str)
+                 upload_interval=DefaultConfig.upload_interval,
+                 boto_client=DefaultConfig.boto_client):
+        require('source_id', source_id, str)
+        require('event_bus_name', event_bus_name, str)
 
         self.queue = queue.Queue(max_queue_size)
-        self.write_key = write_key
+        self.source_id = source_id
         self.on_error = on_error
         self.debug = debug
         self.send = send
         self.sync_mode = sync_mode
-        self.host = host
-        self.gzip = gzip
-        self.timeout = timeout
-        self.proxies = proxies
+        self.event_bus_name = event_bus_name
+        self.boto_client = boto_client
 
         if debug:
             self.log.setLevel(logging.DEBUG)
@@ -82,10 +77,11 @@ class Client(object):
             for _ in range(thread):
                 self.consumers = []
                 consumer = Consumer(
-                    self.queue, write_key, host=host, on_error=on_error,
+                    self.queue, source_id=source_id,
+                    event_bus_name=event_bus_name,
                     upload_size=upload_size, upload_interval=upload_interval,
-                    gzip=gzip, retries=max_retries, timeout=timeout,
-                    proxies=proxies,
+                    retries=max_retries, on_error=on_error,
+                    boto_client=boto_client
                 )
                 self.consumers.append(consumer)
 
@@ -271,7 +267,8 @@ class Client(object):
         # Check message size.
         msg_size = len(json.dumps(msg, cls=DatetimeSerializer).encode())
         if msg_size > MAX_MSG_SIZE:
-            raise RuntimeError('Message exceeds %skb limit. (%s)', str(int(MAX_MSG_SIZE / 1024)), str(msg))
+            raise RuntimeError('Message exceeds %skb limit. (%s)',
+                               str(int(MAX_MSG_SIZE / 1024)), str(msg))
 
         # if send is False, return msg as if it was successfully queued
         if not self.send:
@@ -279,8 +276,8 @@ class Client(object):
 
         if self.sync_mode:
             self.log.debug('enqueued with blocking %s.', msg['type'])
-            post(self.write_key, self.host, gzip=self.gzip,
-                 timeout=self.timeout, proxies=self.proxies, batch=[msg])
+            post(self.source_id, self.event_bus_name,
+                 boto_client=self.boto_client, batch=[msg])
 
             return True, msg
 
