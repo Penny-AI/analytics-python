@@ -9,7 +9,7 @@ from dateutil.tz import tzutc
 
 from eventbridge.analytics.utils import guess_timezone, clean
 from eventbridge.analytics.consumer import Consumer, MAX_MSG_SIZE
-from eventbridge.analytics.request import post, DatetimeSerializer
+from eventbridge.analytics.request import EventBridge, DatetimeSerializer
 from eventbridge.analytics.version import VERSION
 
 import queue
@@ -30,7 +30,10 @@ class Client(object):
         thread = 1
         upload_interval = 0.5
         upload_size = 100
-        boto_client = None
+        region_name = None
+        access_key = None
+        secret_access_key = None
+        session_token = None
 
     """Create a new Segment client."""
     log = logging.getLogger('segment')
@@ -47,18 +50,27 @@ class Client(object):
                  thread=DefaultConfig.thread,
                  upload_size=DefaultConfig.upload_size,
                  upload_interval=DefaultConfig.upload_interval,
-                 boto_client=DefaultConfig.boto_client):
+                 region_name=DefaultConfig.region_name,
+                 access_key=DefaultConfig.access_key,
+                 secret_access_key=DefaultConfig.secret_access_key,
+                 session_token=DefaultConfig.session_token):
         require('source_id', source_id, str)
         require('event_bus_name', event_bus_name, str)
 
         self.queue = queue.Queue(max_queue_size)
-        self.source_id = source_id
         self.on_error = on_error
         self.debug = debug
         self.send = send
         self.sync_mode = sync_mode
-        self.event_bus_name = event_bus_name
-        self.boto_client = boto_client
+
+        self.event_bridge = EventBridge(
+            source_id,
+            event_bus_name,
+            region_name=region_name,
+            access_key=access_key,
+            secret_access_key=secret_access_key,
+            session_token=session_token
+        )
 
         if debug:
             self.log.setLevel(logging.DEBUG)
@@ -77,11 +89,10 @@ class Client(object):
             for _ in range(thread):
                 self.consumers = []
                 consumer = Consumer(
-                    self.queue, source_id=source_id,
-                    event_bus_name=event_bus_name,
+                    self.queue,
+                    event_bridge_client=self.event_bridge,
                     upload_size=upload_size, upload_interval=upload_interval,
-                    retries=max_retries, on_error=on_error,
-                    boto_client=boto_client
+                    retries=max_retries, on_error=on_error
                 )
                 self.consumers.append(consumer)
 
@@ -276,8 +287,7 @@ class Client(object):
 
         if self.sync_mode:
             self.log.debug('enqueued with blocking %s.', msg['type'])
-            post(self.source_id, self.event_bus_name,
-                 boto_client=self.boto_client, batch=[msg])
+            self.event_bridge.post(batch=[msg])
 
             return True, msg
 

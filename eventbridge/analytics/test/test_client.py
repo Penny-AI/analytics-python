@@ -34,8 +34,9 @@ def create_user_with_all_permissions():
 @mock_iam
 class test_client(unittest.TestCase):
 
-    _boto_client = None
     _bus_name = "test_bus_name"
+    _region_name = "eu-west-1"
+    _source_id = "test_source_id"
 
     def mark_fail(self):
         """Mark the failure handler"""
@@ -43,19 +44,21 @@ class test_client(unittest.TestCase):
 
     def setUp(self):
         # Create User
-        user = create_user_with_all_permissions()
+        self.user = create_user_with_all_permissions()
         self.boto_client = boto3.client(
             "events",
-            aws_access_key_id=user["AccessKeyId"],
-            aws_secret_access_key=user["SecretAccessKey"],
-            region_name="eu-west-1"
+            aws_access_key_id=self.user["AccessKeyId"],
+            aws_secret_access_key=self.user["SecretAccessKey"],
+            region_name=self._region_name
         )
         self.boto_client.create_event_bus(Name=self._bus_name)
 
         self.failed = False
-        self.client = Client(source_id='test_source_id',
+        self.client = Client(source_id=self._source_id,
                              event_bus_name=self._bus_name,
-                             boto_client=self.boto_client,
+                             access_key=self.user["AccessKeyId"],
+                             secret_access_key=self.user["SecretAccessKey"],
+                             region_name=self._region_name,
                              on_error=self.mark_fail)
 
     def test_requires_write_key(self):
@@ -300,8 +303,12 @@ class test_client(unittest.TestCase):
             self.assertFalse(consumer.is_alive())
 
     def test_synchronous(self):
-        client = Client('test_app_id', self._bus_name,
-                        boto_client=self.boto_client, sync_mode=True)
+        client = Client(source_id=self._source_id,
+                        event_bus_name=self._bus_name,
+                        access_key=self.user["AccessKeyId"],
+                        secret_access_key=self.user["SecretAccessKey"],
+                        region_name=self._region_name,
+                        sync_mode=True)
 
         success, _ = client.identify('userId')
         self.assertFalse(client.consumers)
@@ -309,7 +316,11 @@ class test_client(unittest.TestCase):
         self.assertTrue(success)
 
     def test_overflow(self):
-        client = Client('test_app_id', 'test_event_bus_name',
+        client = Client(source_id=self._source_id,
+                        event_bus_name=self._bus_name,
+                        access_key=self.user["AccessKeyId"],
+                        secret_access_key=self.user["SecretAccessKey"],
+                        region_name=self._region_name,
                         max_queue_size=1)
         # Ensure consumer thread is no longer uploading
         client.join()
@@ -341,17 +352,20 @@ class test_client(unittest.TestCase):
         self.assertEqual(msg['traits'], {'birthdate': date(1981, 2, 2)})
 
     def test_user_defined_upload_size(self):
-        client = Client('test_app_id', self._bus_name,
+        client = Client(source_id=self._source_id,
+                        event_bus_name=self._bus_name,
+                        access_key=self.user["AccessKeyId"],
+                        secret_access_key=self.user["SecretAccessKey"],
+                        region_name=self._region_name,
                         on_error=self.fail,
-                        upload_size=10, upload_interval=3,
-                        boto_client=self.boto_client)
+                        upload_size=10, upload_interval=3)
 
         def mock_post_fn(**kwargs):
             self.assertEqual(len(kwargs['batch']), 10)
 
         # the post function should be called 2 times, with a batch size of 10
         # each time.
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         side_effect=mock_post_fn) \
                 as mock_post:
             for _ in range(20):

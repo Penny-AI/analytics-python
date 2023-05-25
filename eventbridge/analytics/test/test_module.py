@@ -30,7 +30,7 @@ class TestModule(unittest.TestCase):
     def test_track(self):
         def mock_post(*args, **kwargs):
             pass
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         mock.Mock(side_effect=mock_post)):
             analytics.track('userId', 'python module event')
             analytics.flush()
@@ -38,7 +38,7 @@ class TestModule(unittest.TestCase):
     def test_identify(self):
         def mock_post(*args, **kwargs):
             pass
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         mock.Mock(side_effect=mock_post)):
             analytics.identify('userId', {'email': 'user@email.com'})
             analytics.flush()
@@ -46,7 +46,7 @@ class TestModule(unittest.TestCase):
     def test_group(self):
         def mock_post(*args, **kwargs):
             pass
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         mock.Mock(side_effect=mock_post)):
             analytics.group('userId', 'groupId')
             analytics.flush()
@@ -54,7 +54,7 @@ class TestModule(unittest.TestCase):
     def test_alias(self):
         def mock_post(*args, **kwargs):
             pass
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         mock.Mock(side_effect=mock_post)):
             analytics.alias('previousId', 'userId')
             analytics.flush()
@@ -62,7 +62,7 @@ class TestModule(unittest.TestCase):
     def test_page(self):
         def mock_post(*args, **kwargs):
             pass
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         mock.Mock(side_effect=mock_post)):
             analytics.page('userId')
             analytics.flush()
@@ -70,7 +70,7 @@ class TestModule(unittest.TestCase):
     def test_screen(self):
         def mock_post(*args, **kwargs):
             pass
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         mock.Mock(side_effect=mock_post)):
             analytics.screen('userId')
             analytics.flush()
@@ -78,6 +78,6 @@ class TestModule(unittest.TestCase):
     def test_flush(self):
         def mock_post(*args, **kwargs):
             pass
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         mock.Mock(side_effect=mock_post)):
             analytics.flush()
