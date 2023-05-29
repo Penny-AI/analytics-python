@@ -1,3 +1,6 @@
+# 2.2.3 / 2023-05-29
+- First release of EventBridge based endpoint
+
 # 2.2.2 / 2022-11-29
 - Specifying milliseconds as the isoformat rather than the default microseconds in timestamp
 
