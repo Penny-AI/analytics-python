@@ -36,7 +36,7 @@ class Client(object):
         session_token = None
 
     """Create a new Segment client."""
-    log = logging.getLogger('segment')
+    log = logging.getLogger('eventbridge.analytics')
 
     def __init__(self,
                  source_id=DefaultConfig.source_id,

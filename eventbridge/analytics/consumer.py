@@ -26,7 +26,7 @@ MAX_BATCH_COUNT = 10
 
 class Consumer(Thread):
     """Consumes the messages from the client's queue."""
-    log = logging.getLogger('segment')
+    log = logging.getLogger('eventbridge.analytics')
 
     def __init__(self, queue, event_bridge_client,
                  upload_size=100, on_error=None, upload_interval=0.5,

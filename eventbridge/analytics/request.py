@@ -3,6 +3,7 @@ import logging
 import json
 from dateutil.tz import tzutc
 import boto3
+from botocore.exceptions import ClientError
 
 
 class EventBridge(object):
@@ -14,6 +15,7 @@ class EventBridge(object):
                  access_key=None,
                  secret_access_key=None,
                  session_token=None):
+
         self.source_id = source_id
         self.event_bus_name = event_bus_name
         self.boto_client = boto3.client('events')
@@ -26,7 +28,7 @@ class EventBridge(object):
                                             region_name=region_name)
 
     def post(self, **kwargs):
-        log = logging.getLogger('segment')
+        log = logging.getLogger('eventbridge.analytics')
         body = kwargs
         body["sentAt"] = datetime.utcnow().replace(tzinfo=tzutc()).isoformat()
 
@@ -43,9 +45,14 @@ class EventBridge(object):
                     'EventBusName': self.event_bus_name
             })
 
-        res = self.boto_client.put_events(
-            Entries=entries
-        )
+        try:
+            res = self.boto_client.put_events(
+                Entries=entries
+            )
+        except ClientError as e:
+            log.debug('ClientError:  %s,  %s' % (e.response['Error']['Code'],
+                                                 e.response['Error']['Message']))
+            raise APIError(e.response['Error']['Code'], e.response['Error']['Message'])
 
         if res['FailedEntryCount'] == 0:
             log.debug('data uploaded successfully')
