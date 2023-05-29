@@ -4,7 +4,7 @@ import json
 import boto3
 from moto import mock_iam, mock_events
 
-from eventbridge.analytics.request import post, DatetimeSerializer
+from eventbridge.analytics.request import EventBridge, DatetimeSerializer
 
 
 @mock_iam
@@ -32,7 +32,10 @@ def create_user_with_all_permissions():
 class TestRequests(unittest.TestCase):
 
     _boto_client = None
+    _source_id = "test_source_id"
     _bus_name = "test_bus_name"
+    _region_name = "eu-west-1"
+    _event_bridge_client = None
 
     def setUp(self):
         # Create User
@@ -41,12 +44,18 @@ class TestRequests(unittest.TestCase):
             "events",
             aws_access_key_id=user["AccessKeyId"],
             aws_secret_access_key=user["SecretAccessKey"],
-            region_name="eu-west-1"
+            region_name=self._region_name
         )
         self._boto_client.create_event_bus(Name=self._bus_name)
+        self._event_bridge_client = EventBridge(
+            source_id=self._source_id,
+            event_bus_name=self._bus_name,
+            access_key=user["AccessKeyId"],
+            secret_access_key=user["SecretAccessKey"],
+            region_name=self._region_name)
 
     def test_valid_request(self):
-        res = post('app_id', self._bus_name, boto_client=self._boto_client, batch=[{
+        res = self._event_bridge_client.post(batch=[{
             'userId': 'userId',
             'event': 'python event',
             'type': 'track'

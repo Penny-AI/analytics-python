@@ -3,53 +3,71 @@ import logging
 import json
 from dateutil.tz import tzutc
 import boto3
-import sys
-
-# this is a pointer to the module object instance itself.
-this = sys.modules[__name__]
-this._boto_client = boto3.client('events')
+from botocore.exceptions import ClientError
 
 
-def post(source_id, event_bus_name, boto_client=None, **kwargs):
-    if boto_client is not None:
-        this._boto_client = boto_client
+class EventBridge(object):
 
-    """Post the `kwargs` to the API"""
-    log = logging.getLogger('segment')
-    body = kwargs
-    body["sentAt"] = datetime.utcnow().replace(tzinfo=tzutc()).isoformat()
+    def __init__(self,
+                 source_id,
+                 event_bus_name,
+                 region_name=None,
+                 access_key=None,
+                 secret_access_key=None,
+                 session_token=None):
 
-    data = json.dumps(body, cls=DatetimeSerializer)
-    log.debug('making request: %s', data)
+        self.source_id = source_id
+        self.event_bus_name = event_bus_name
+        self.boto_client = boto3.client('events')
 
-    entries = []
-    for detail_data in body['batch']:
-        detail_data_str = json.dumps(detail_data, cls=DatetimeSerializer)
-        entries.append({
-                'Source': source_id,
-                'DetailType': 'eventbridge_analytics_python',
-                'Detail': detail_data_str,
-                'EventBusName': event_bus_name
-        })
+        if access_key is not None and secret_access_key is not None:
+            self.boto_client = boto3.client('events',
+                                            aws_access_key_id=access_key,
+                                            aws_secret_access_key=secret_access_key,
+                                            aws_session_token=session_token,
+                                            region_name=region_name)
 
-    res = this._boto_client.put_events(
-        Entries=entries
-    )
+    def post(self, **kwargs):
+        log = logging.getLogger('eventbridge.analytics')
+        body = kwargs
+        body["sentAt"] = datetime.utcnow().replace(tzinfo=tzutc()).isoformat()
 
-    if res['FailedEntryCount'] == 0:
-        log.debug('data uploaded successfully')
-        return res
+        data = json.dumps(body, cls=DatetimeSerializer)
+        log.debug('making request: %s', data)
 
-    try:
-        log.debug('failed %s entries', res['FailedEntryCount'])
-        for entry in res["Entries"]:
-            if "ErrorCode" in entry and "ErrorMessage" in entry:
-                raise APIError(res['FailedEntryCount'],
-                               entry['ErrorCode'],
-                               entry['ErrorMessage'])
+        entries = []
+        for detail_data in body['batch']:
+            detail_data_str = json.dumps(detail_data, cls=DatetimeSerializer)
+            entries.append({
+                    'Source': self.source_id,
+                    'DetailType': 'eventbridge_analytics_python',
+                    'Detail': detail_data_str,
+                    'EventBusName': self.event_bus_name
+            })
 
-    except ValueError:
-        raise APIError(res.status_code, 'unknown', res.text)
+        try:
+            res = self.boto_client.put_events(
+                Entries=entries
+            )
+        except ClientError as e:
+            log.debug('ClientError:  %s,  %s' % (e.response['Error']['Code'],
+                                                 e.response['Error']['Message']))
+            raise APIError(e.response['Error']['Code'], e.response['Error']['Message'])
+
+        if res['FailedEntryCount'] == 0:
+            log.debug('data uploaded successfully')
+            return res
+
+        try:
+            log.debug('failed %s entries', res['FailedEntryCount'])
+            for entry in res["Entries"]:
+                if "ErrorCode" in entry and "ErrorMessage" in entry:
+                    raise APIError(res['FailedEntryCount'],
+                                   entry['ErrorCode'],
+                                   entry['ErrorMessage'])
+
+        except ValueError:
+            raise APIError(res.status_code, 'unknown', res.text)
 
 
 class APIError(Exception):

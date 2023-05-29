@@ -11,7 +11,7 @@ except ImportError:
     from Queue import Queue
 
 from eventbridge.analytics.consumer import Consumer, MAX_MSG_SIZE
-from eventbridge.analytics.request import APIError
+from eventbridge.analytics.request import EventBridge, APIError
 
 
 @mock_iam
@@ -39,22 +39,31 @@ def create_user_with_all_permissions():
 class TestConsumer(unittest.TestCase):
 
     _boto_client = None
+    _event_bridge_client = None
     _bus_name = "test_bus_name"
+    _source_id = "test_source_id"
+    _user = None
+    _region_name = "eu-west-1"
 
     def setUp(self):
         # Create User
-        user = create_user_with_all_permissions()
-        self.boto_client = boto3.client(
+        self._user = create_user_with_all_permissions()
+        self._boto_client = boto3.client(
             "events",
-            aws_access_key_id=user["AccessKeyId"],
-            aws_secret_access_key=user["SecretAccessKey"],
+            aws_access_key_id=self._user["AccessKeyId"],
+            aws_secret_access_key=self._user["SecretAccessKey"],
             region_name="eu-west-1"
         )
-        self.boto_client.create_event_bus(Name=self._bus_name)
+        self._boto_client.create_event_bus(Name=self._bus_name)
+        self._event_bridge_client = EventBridge(source_id=self._source_id,
+                                                event_bus_name=self._bus_name,
+                                                access_key=self._user["AccessKeyId"],
+                                                secret_access_key=self._user["SecretAccessKey"],
+                                                region_name=self._region_name)
 
     def test_next(self):
         q = Queue()
-        consumer = Consumer(q, '', self._bus_name, boto_client=self._boto_client)
+        consumer = Consumer(q, self._event_bridge_client)
         q.put(1)
         next = consumer.next()
         self.assertEqual(next, [1])
@@ -62,7 +71,7 @@ class TestConsumer(unittest.TestCase):
     def test_next_limit(self):
         q = Queue()
         upload_size = 10
-        consumer = Consumer(q, '', self._bus_name, upload_size, boto_client=self._boto_client)
+        consumer = Consumer(q, self._event_bridge_client)
         for i in range(10000):
             q.put(i)
         next = consumer.next()
@@ -70,7 +79,7 @@ class TestConsumer(unittest.TestCase):
 
     def test_dropping_oversize_msg(self):
         q = Queue()
-        consumer = Consumer(q, '', self._bus_name, boto_client=self._boto_client)
+        consumer = Consumer(q, self._event_bridge_client)
         oversize_msg = {'m': 'x' * MAX_MSG_SIZE}
         q.put(oversize_msg)
         next = consumer.next()
@@ -79,7 +88,7 @@ class TestConsumer(unittest.TestCase):
 
     def test_upload(self):
         q = Queue()
-        consumer = Consumer(q, 'test_app_id', self._bus_name, boto_client=self._boto_client)
+        consumer = Consumer(q, self._event_bridge_client)
         track = {
             'type': 'track',
             'event': 'python event',
@@ -88,7 +97,7 @@ class TestConsumer(unittest.TestCase):
 
         def mock_post(*args, **kwargs):
             pass
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         mock.Mock(side_effect=mock_post)):
             q.put(track)
             success = consumer.upload()
@@ -100,9 +109,9 @@ class TestConsumer(unittest.TestCase):
         # The consumer should upload _n_ times.
         q = Queue()
         upload_interval = 0.3
-        consumer = Consumer(q, 'test_app_id', self._bus_name, upload_size=10,
-                            upload_interval=upload_interval, boto_client=self._boto_client)
-        with mock.patch('eventbridge.analytics.consumer.post') as mock_post:
+        consumer = Consumer(q, self._event_bridge_client, upload_size=10,
+                            upload_interval=upload_interval)
+        with mock.patch('eventbridge.analytics.request.EventBridge.post') as mock_post:
             consumer.start()
             for i in range(0, 3):
                 track = {
@@ -120,9 +129,10 @@ class TestConsumer(unittest.TestCase):
         q = Queue()
         upload_interval = 0.5
         upload_size = 10
-        consumer = Consumer(q, 'test_app_id', self._bus_name, upload_size=upload_size,
-                            upload_interval=upload_interval, boto_client=self._boto_client)
-        with mock.patch('eventbridge.analytics.consumer.post') as mock_post:
+        consumer = Consumer(q, self._event_bridge_client,
+                            upload_size=upload_size,
+                            upload_interval=upload_interval)
+        with mock.patch('eventbridge.analytics.request.EventBridge.post') as mock_post:
             consumer.start()
             for i in range(0, upload_size * 2):
                 track = {
@@ -135,7 +145,7 @@ class TestConsumer(unittest.TestCase):
             self.assertEqual(mock_post.call_count, 2)
 
     def test_request(self):
-        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client)
+        consumer = Consumer(None, self._event_bridge_client)
         track = {
             'type': 'track',
             'event': 'python event',
@@ -144,7 +154,7 @@ class TestConsumer(unittest.TestCase):
 
         def mock_post(*args, **kwargs):
             pass
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         mock.Mock(side_effect=mock_post)):
             consumer.request([track])
 
@@ -157,7 +167,7 @@ class TestConsumer(unittest.TestCase):
                 raise expected_exception
         mock_post.call_count = 0
 
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         mock.Mock(side_effect=mock_post)):
             track = {
                 'type': 'track',
@@ -183,21 +193,21 @@ class TestConsumer(unittest.TestCase):
 
     def test_request_retry(self):
         # we should retry on general errors
-        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client)
+        consumer = Consumer(None, self._event_bridge_client)
         self._test_request_retry(consumer, Exception('generic exception'), 2)
 
         # we should retry on server errors
-        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client)
+        consumer = Consumer(None, self._event_bridge_client)
         self._test_request_retry(consumer, APIError(
             2, '500', 'Internal Server Error'), 2)
 
         # we should retry on HTTP 429 errors
-        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client)
+        consumer = Consumer(None, self._event_bridge_client)
         self._test_request_retry(consumer, APIError(
             2, '429', 'Too Many Requests'), 2)
 
         # we should NOT retry on other client errors
-        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client)
+        consumer = Consumer(None, self._event_bridge_client)
         api_error = APIError(1, '400', 'Client Errors')
         try:
             self._test_request_retry(consumer, api_error, 1)
@@ -207,19 +217,20 @@ class TestConsumer(unittest.TestCase):
             self.fail('request() should not retry on client errors')
 
         # test for number of exceptions raise > retries value
-        consumer = Consumer(None, 'test_app_id', self._bus_name, boto_client=self._boto_client, retries=3)
+        consumer = Consumer(None, self._event_bridge_client, retries=3)
         self._test_request_retry(consumer, APIError(
             3, '500', 'Internal Server Error'), 3)
 
     def test_pause(self):
-        consumer = Consumer(None,'test_app_id', self._bus_name, boto_client=self._boto_client)
+        consumer = Consumer(None, self._event_bridge_client)
         consumer.pause()
         self.assertFalse(consumer.running)
 
     def test_max_batch_size(self):
         q = Queue()
         consumer = Consumer(
-            q, 'test_app_id', self._bus_name, boto_client=self._boto_client, upload_size=950000, upload_interval=3)
+            q, self._event_bridge_client, upload_size=950000,
+            upload_interval=3)
         track = {
             'type': 'track',
             'event': 'python event',
@@ -232,7 +243,7 @@ class TestConsumer(unittest.TestCase):
         def mock_post_fn(_, data, **kwargs):
             pass
 
-        with mock.patch('eventbridge.analytics.consumer.post',
+        with mock.patch('eventbridge.analytics.request.EventBridge.post',
                         side_effect=mock_post_fn) as mock_post:
             consumer.start()
             for _ in range(0, n_msgs + 2):

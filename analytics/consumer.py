@@ -5,7 +5,10 @@ import monotonic
 import backoff
 
 
-from eventbridge.analytics.request import post, APIError, DatetimeSerializer
+from eventbridge.analytics.request import (
+    APIError,
+    DatetimeSerializer)
+
 
 from queue import Empty
 
@@ -26,18 +29,18 @@ MAX_BATCH_COUNT = 10
 
 class Consumer(Thread):
     """Consumes the messages from the client's queue."""
-    log = logging.getLogger('segment')
+    log = logging.getLogger('eventbridge.analytics')
 
-    def __init__(self, queue, source_id, upload_size=100, event_bus_name=None,
-                 on_error=None, upload_interval=0.5, retries=10):
+    def __init__(self, queue, event_bridge_client,
+                 upload_size=100, on_error=None, upload_interval=0.5,
+                 retries=10):
         """Create a consumer thread."""
         Thread.__init__(self)
         # Make consumer a daemon thread so that it doesn't block program exit
         self.daemon = True
         self.upload_size = upload_size
         self.upload_interval = upload_interval
-        self.source_id = source_id
-        self.event_bus_name = event_bus_name
+        self.event_bridge_client = event_bridge_client
         self.on_error = on_error
         self.queue = queue
         # It's important to set running in the constructor: if we are asked to
@@ -135,6 +138,6 @@ class Consumer(Thread):
             max_tries=self.retries + 1,
             giveup=fatal_exception)
         def send_request():
-            post(self.source_id, self.event_bus_name, batch=batch)
+            self.event_bridge_client.post(batch=batch)
 
         send_request()

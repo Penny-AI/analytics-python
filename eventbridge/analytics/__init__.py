@@ -13,6 +13,10 @@ send = Client.DefaultConfig.send
 sync_mode = Client.DefaultConfig.sync_mode
 max_queue_size = Client.DefaultConfig.max_queue_size
 max_retries = Client.DefaultConfig.max_retries
+access_key = Client.DefaultConfig.access_key
+secret_access_key = Client.DefaultConfig.secret_access_key
+region_name = Client.DefaultConfig.region_name
+session_token = Client.DefaultConfig.session_token
 
 default_client = None
 
@@ -72,7 +76,11 @@ def _proxy(method, *args, **kwargs):
                                 max_queue_size=max_queue_size,
                                 send=send, on_error=on_error,
                                 max_retries=max_retries,
-                                sync_mode=sync_mode)
+                                sync_mode=sync_mode,
+                                access_key=access_key,
+                                secret_access_key=secret_access_key,
+                                region_name=region_name,
+                                session_token=session_token)
 
     fn = getattr(default_client, method)
     return fn(*args, **kwargs)
