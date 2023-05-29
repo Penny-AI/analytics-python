@@ -265,7 +265,7 @@ class Client(object):
         msg['timestamp'] = timestamp.isoformat(timespec='milliseconds')
         msg['messageId'] = stringify_id(message_id)
         msg['context']['library'] = {
-            'name': 'analytics-python',
+            'name': 'eventbridge-analytics-python',
             'version': VERSION
         }
 

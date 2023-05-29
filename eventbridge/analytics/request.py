@@ -44,6 +44,7 @@ class EventBridge(object):
                     'Detail': detail_data_str,
                     'EventBusName': self.event_bus_name
             })
+            log.debug('entry: %s', entries[-1])
 
         try:
             res = self.boto_client.put_events(
