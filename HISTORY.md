@@ -1,3 +1,6 @@
+# 2.2.4 / 2023-06-02
+- Minor refactorings
+
 # 2.2.3 / 2023-05-29
 - First release of EventBridge based endpoint
 

@@ -85,7 +85,7 @@ def screen():
 
 def identify():
     analytics.identify(options.userId, anonymous_id=options.anonymousId,
-                       traits=json_hash(options.traits),
+                       traits=json_hash('{"email": "test@pennyapp.com","external_id": "abcd12345"}'),
                        context=json_hash(options.context))
 
 
