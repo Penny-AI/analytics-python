@@ -18,7 +18,6 @@ class EventBridge(object):
 
         self.source_id = source_id
         self.event_bus_name = event_bus_name
-        self.boto_client = boto3.client('events')
 
         if access_key is not None and secret_access_key is not None:
             self.boto_client = boto3.client('events',
@@ -26,6 +25,8 @@ class EventBridge(object):
                                             aws_secret_access_key=secret_access_key,
                                             aws_session_token=session_token,
                                             region_name=region_name)
+        else:
+            self.boto_client = boto3.client('events')
 
     def post(self, **kwargs):
         log = logging.getLogger('eventbridge.analytics')
