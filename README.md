@@ -27,6 +27,11 @@ import eventbridge.analytics as analytics
 
 analytics.source_id = 'YOU_SOURCE_IDENTIFIER'
 analytics.event_bus_name = 'YOUR_EVENT_BUS_NAME'
+
+# If passing in AWS credentials manually.
+analytics.access_key = aws_access_key
+analytics.secret_access_key = aws_secret_key
+analytics.region_name = 'us-east-1'
 ```
 **Note** If you need to send data to multiple EventBridge buses, you can initialize a new Client for each `source_id` and `event_bus_name`
 
